@@ -38,6 +38,8 @@ yarn-error.log*
 /AGENTS.md
 /PROJECT_PLAN.md
 /docs/
+/.agents/
+/design-system/
 
 # vercel
 .vercel
