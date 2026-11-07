@@ -79,7 +79,7 @@ Credentials are specific to each provider. Set `AI_PROVIDER` to `gemini`, `anthr
 | **OpenAI** | `OPENAI_API_KEY`, `OPENAI_MODEL` | Use an OpenAI Platform API key. “Codex” does not have a separate general-purpose API key for this app. |
 | **OpenAI-compatible service** | `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_MODEL` | The endpoint must accept the Chat Completions request format used by CourseForge. `AI_API_KEY` and `AI_MODEL` are also accepted as key/model aliases. |
 
-Default models and the full workflow are documented in [`docs/PROJECT_WORKFLOW.md`](docs/PROJECT_WORKFLOW.md). Model availability and access depend on the configured account and provider.
+The selected provider is used for lesson generation, section edits, and model-assisted QC. CourseForge does not automatically switch to a different provider when one fails; only Gemini has the separate same-provider fallback described above. Model availability and access depend on the configured account and provider.
 
 ### Live research variables
 
@@ -129,8 +129,6 @@ src/
     ├── lesson/             # Lesson types, sample lessons, and QC logic
     └── research/           # Live research and source handling
 
-docs/                      # Workflow and implementation notes
-design-system/courseforge/ # Product visual and interaction rules
 ```
 
 ## Development commands
@@ -141,12 +139,6 @@ design-system/courseforge/ # Product visual and interaction rules
 | `npm run build` | Create a production build. |
 | `npm run start` | Run the production server. |
 | `npm run lint` | Run ESLint. |
-
-## More project notes
-
-- [Complete step-by-step workflow](docs/PROJECT_WORKFLOW.md)
-- [Project plan](PROJECT_PLAN.md)
-- [CourseForge design system](design-system/courseforge/MASTER.md)
 
 ---
 
