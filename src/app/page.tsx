@@ -12,8 +12,8 @@ import {
 } from "@/lib/lesson/brief";
 import type { LessonBrief, LessonDraft } from "@/lib/lesson/types";
 
-const BRIEF_STORAGE_KEY = "kalvium-lesson-studio.brief.v1";
-const LESSON_STORAGE_KEY = "kalvium-lesson-studio.lesson.v1";
+const BRIEF_STORAGE_KEY = "courseforge.brief.v1";
+const LESSON_STORAGE_KEY = "courseforge.lesson.v1";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -247,7 +247,7 @@ export default function Home() {
       </a>
 
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="Kalvium Lesson Studio home">
+        <Link className="brand" href="/" aria-label="CourseForge home">
           <span className="brand-mark" aria-hidden="true">K</span>
           <span className="brand-copy">
             <strong>Kalvium</strong>
