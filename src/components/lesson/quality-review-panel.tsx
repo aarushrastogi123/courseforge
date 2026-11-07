@@ -57,10 +57,18 @@ export function QualityReviewPanel({ lesson, onReport, onApplySuggestion, disabl
         <span className="quality-review-count">2 separate reviews</span>
       </div>
 
+      {Object.values(lesson.qualityReports).some((report) => report.status === "pending" && report.summary.startsWith("Lesson changes were applied.")) && (
+        <div className="quality-rerun-notice" role="status">
+          <strong>Lesson changes applied.</strong>
+          <span>Both checks are ready to rerun on the revised lesson. Run each layer below to look for any remaining mistakes or alignment issues.</span>
+        </div>
+      )}
+
       <div className="quality-grid">
         {layers.map((item) => {
           const report = lesson.qualityReports[item.id];
           const isRunning = running === item.id;
+          const needsRerun = report.status === "pending" && report.summary.startsWith("Lesson changes were applied.");
           return (
             <article className="quality-card" key={item.id} aria-labelledby={`review-${item.id}`}>
               <div className="quality-card-top">
@@ -72,7 +80,7 @@ export function QualityReviewPanel({ lesson, onReport, onApplySuggestion, disabl
               <h4 id={`review-${item.id}`}>{item.title}</h4>
               <p className="quality-detail">{report.reviewMethod === "ai-assisted" ? item.modelAssisted : item.heuristic}</p>
               <button className="button button-secondary quality-run-button" type="button" disabled={running !== null || disabled} onClick={() => runReview(item.id)}>
-                {isRunning ? "Checking…" : report.status === "complete" ? `Rerun layer ${item.short}` : `Run layer ${item.short}`}
+                {isRunning ? "Checking…" : report.status === "complete" || needsRerun ? `Rerun layer ${item.short}` : `Run layer ${item.short}`}
               </button>
               {report.status === "complete" && (
                 <div className="quality-results" aria-live="polite">
@@ -120,12 +128,12 @@ function Finding({ finding, layer, lesson, onApplySuggestion }: { finding: QCFin
             <div><strong>Proposed wording</strong><p>{finding.suggestedEdit.replacementContent}</p></div>
           </div>
           <button className="button button-secondary" type="button" onClick={() => onApplySuggestion(finding)}>
-            Use recommendation as a section prompt
+            Make this change with AI
           </button>
         </details>
       ) : (
         <button className="button button-secondary" type="button" onClick={() => onApplySuggestion(finding)}>
-          Open a section prompt
+          Make this change with AI
         </button>
       )}
       {layer === "factual-accuracy" && finding.sourceIds.length > 0 && (

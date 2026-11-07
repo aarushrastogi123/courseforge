@@ -2,6 +2,7 @@
 
 import { startTransition, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LessonBriefForm } from "@/components/lesson/lesson-brief-form";
 import { LessonDraftView } from "@/components/lesson/lesson-draft-view";
 import { GIT_SAMPLE_LESSON_BRIEF, SAMPLE_LESSON_BRIEF, validateLessonBrief, type LessonBriefErrors } from "@/lib/lesson/brief";
@@ -159,8 +160,7 @@ export default function Home() {
       <a className="skip-link" href="#main-content">Skip to current step</a>
       <header className="topbar">
         <Link className="brand" href="/" aria-label="CourseForge home" onClick={(event) => { event.preventDefault(); setCurrentStep(1); }}>
-          <span className="brand-mark" aria-hidden="true">C</span>
-          <span className="brand-copy"><strong>CourseForge</strong><span>LESSON STUDIO</span></span>
+          <Image className="brand-logo" src="/courseforge-logo.png" alt="CourseForge" width={472} height={472} priority />
         </Link>
         <div className="workspace-status"><span className="status-dot" aria-hidden="true" />Local workspace</div>
       </header>

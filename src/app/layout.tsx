@@ -8,9 +8,29 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "CourseForge",
-  description:
-    "Research, create, review, and export instructor-ready lessons.",
+  applicationName: "CourseForge",
+  title: {
+    default: "CourseForge | Lesson Studio",
+    template: "%s | CourseForge",
+  },
+  description: "Research, draft, quality-check, and export focused 45-minute lessons.",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "472x472" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "472x472" }],
+  },
+  openGraph: {
+    type: "website",
+    siteName: "CourseForge",
+    title: "CourseForge | Lesson Studio",
+    description: "Research, draft, quality-check, and export focused 45-minute lessons.",
+    images: [{ url: "/courseforge-logo.png", width: 472, height: 472, alt: "CourseForge" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "CourseForge | Lesson Studio",
+    description: "Research, draft, quality-check, and export focused 45-minute lessons.",
+    images: ["/courseforge-logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
