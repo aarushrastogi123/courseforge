@@ -94,7 +94,7 @@ export function QualityReviewPanel({ lesson, onReport, onApplySuggestion, disabl
           {failedLayer && <button className="button button-secondary" type="button" disabled={running !== null || disabled} onClick={() => runReview(failedLayer, true)}>Run transparent heuristic checks instead</button>}
         </div>
       )}
-      <p className="quality-caveat">A model-assisted report compares only the research excerpts available to it and is not proof of accuracy. Otherwise, a report uses starter heuristics. Review proposed wording, load it into the editor, save it yourself, and rerun both layers.</p>
+      <p className="quality-caveat">Model-assisted reports compare only the research excerpts available to them and are not proof of accuracy. Heuristic reports check structure and metadata only. Review any proposed edit in its section prompt, apply it yourself, then rerun both layers.</p>
     </section>
   );
 }
@@ -120,11 +120,13 @@ function Finding({ finding, layer, lesson, onApplySuggestion }: { finding: QCFin
             <div><strong>Proposed wording</strong><p>{finding.suggestedEdit.replacementContent}</p></div>
           </div>
           <button className="button button-secondary" type="button" onClick={() => onApplySuggestion(finding)}>
-            Load this wording into the editor
+            Use recommendation as a section prompt
           </button>
         </details>
       ) : (
-        <a className="finding-edit-link" href="#review-export">Review and edit the lesson</a>
+        <button className="button button-secondary" type="button" onClick={() => onApplySuggestion(finding)}>
+          Open a section prompt
+        </button>
       )}
       {layer === "factual-accuracy" && finding.sourceIds.length > 0 && (
         <span className="finding-sources">Linked references: {finding.sourceIds.length}</span>
