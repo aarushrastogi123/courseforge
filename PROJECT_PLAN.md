@@ -1,4 +1,4 @@
-# Kalvium AI Research Intern Assignment — Remaining Work Plan
+# CourseForge — Remaining Project Plan
 
 Final submission packaging and demo-video creation are intentionally out of scope for this plan.
 
