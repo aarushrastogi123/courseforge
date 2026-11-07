@@ -34,6 +34,11 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Local-only project notes and agent instructions
+/AGENTS.md
+/PROJECT_PLAN.md
+/docs/
+
 # vercel
 .vercel
 
