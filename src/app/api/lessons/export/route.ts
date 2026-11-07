@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   return new Response(lessonToMarkdown(lesson as unknown as LessonDraft), {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
-      "Content-Disposition": "attachment; filename=kalvium-lesson.md",
+      "Content-Disposition": "attachment; filename=courseforge-lesson.md",
       "Cache-Control": "no-store",
     },
   });

@@ -247,10 +247,10 @@ export default function Home() {
       </a>
 
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="Kalvium Lesson Studio home">
-          <span className="brand-mark" aria-hidden="true">K</span>
+        <Link className="brand" href="/" aria-label="CourseForge home">
+          <span className="brand-mark" aria-hidden="true">C</span>
           <span className="brand-copy">
-            <strong>Kalvium</strong>
+            <strong>CourseForge</strong>
             <span>LESSON STUDIO</span>
           </span>
         </Link>

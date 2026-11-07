@@ -8,9 +8,9 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Kalvium Lesson Studio",
+  title: "CourseForge",
   description:
-    "Review, edit, and export the curated HTTP and Git lesson examples.",
+    "Research, create, review, and export instructor-ready lessons.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

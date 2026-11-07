@@ -1,4 +1,4 @@
-# Kalvium Lesson Studio
+# CourseForge
 
 A focused instructor workspace for researching, reviewing, editing, and exporting 45-minute lessons. Curated HTTP and Git examples work without provider credentials; custom topics use live source search and model-backed generation when configured.
 
@@ -21,7 +21,7 @@ Open [http://localhost:3000](http://localhost:3000).
 Custom-topic research uses Tavily for web results, Open Library for book catalog records, and YouTube Data API for videos. Gemini generates a lesson from returned source metadata and excerpts when its key is configured; OpenAI remains an optional fallback if no Gemini key is present. Book catalog records are not treated as full text. Layer 1 uses the available website excerpts when present and reports evidence gaps; Layer 2 reviews instructional quality. Model-assisted checks are advisory and are not proof of factual accuracy. Without model or search keys, both curated examples remain available and QC uses transparent heuristics. Instructors can review findings, load proposed edits into the editor, save changes in this browser, rerun both reports, preview, and export the lesson, source excerpts, references, and reports as Markdown.
 
 See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for the build sequence.
-Design decisions are recorded in [design-system/kalvium-lesson-studio/MASTER.md](./design-system/kalvium-lesson-studio/MASTER.md).
+Design decisions are recorded in [design-system/courseforge/MASTER.md](./design-system/courseforge/MASTER.md).
 
 ## Structure
 
@@ -30,7 +30,7 @@ Design decisions are recorded in [design-system/kalvium-lesson-studio/MASTER.md]
 - `src/lib/research/providers/` — curated examples and live research adapters
 - `src/lib/ai/` — server-only model integration
 - `src/app/api/lessons/` — lesson draft endpoint
-- `design-system/kalvium-lesson-studio/` — product-wide and workspace design rules
+- `design-system/courseforge/` — product-wide and workspace design rules
 - `.agents/skills/` — project-local UI/UX guidance
 
 ## Configuration
