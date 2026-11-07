@@ -1,4 +1,4 @@
-import { requestJSONFromModel } from "@/lib/ai/model";
+import { getAIConfiguration, requestJSONFromModel } from "@/lib/ai/model";
 import type { LessonDraft, QCFinding, QCLayer, QCReport, QCFindingSeverity } from "@/lib/lesson/types";
 
 type ModelReport = {
@@ -80,6 +80,6 @@ export async function reviewLessonWithAI(lesson: LessonDraft, layer: QCLayer): P
 }
 
 export function canRunAIReview(lesson: LessonDraft, layer: QCLayer) {
-  if (!process.env.OPENAI_API_KEY) return false;
+  if (!getAIConfiguration().provider) return false;
   return layer !== "factual-accuracy" || hasEvidenceText(lesson);
 }

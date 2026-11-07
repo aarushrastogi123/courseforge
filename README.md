@@ -1,5 +1,7 @@
 # CourseForge
 
+See [docs/PROJECT_WORKFLOW.md](docs/PROJECT_WORKFLOW.md) for the complete step-by-step instructor workflow, application routes, persistence behavior, and known boundaries.
+
 A focused instructor workspace for researching, reviewing, editing, and exporting 45-minute lessons. Curated HTTP and Git examples work without provider credentials; custom topics use live source search and model-backed generation when configured.
 
 ## Run locally
@@ -35,13 +37,16 @@ Design decisions are recorded in [design-system/courseforge/MASTER.md](./design-
 
 ## Configuration
 
-Copy `.env.example` to `.env.local` and add provider keys to enable custom-topic research and generation. Keep these values server-side; never add a `NEXT_PUBLIC_` prefix. Restart the development server after changing keys.
+Copy `.env.example` to `.env.local` and configure one model provider for generation and model-assisted QC. Keep keys server-side; never add a `NEXT_PUBLIC_` prefix. Restart the development server after changing keys. Credentials are provider-specific. `AI_PROVIDER` can be `gemini`, `anthropic`, `openai`, or `openai-compatible`; if omitted, the app selects the first configured key in that order (Gemini, Claude, OpenAI, compatible).
 
-- `GEMINI_API_KEY` — preferred model for lesson generation and model-assisted QC
+- `AI_PROVIDER` — explicitly selects the provider when multiple keys are configured
+- `GEMINI_API_KEY` — Gemini key; used with `GEMINI_MODEL` and optional `GEMINI_FALLBACK_MODEL`
 - `GEMINI_MODEL` — optional primary Gemini model ID (defaults to `gemini-3.8-flash`)
 - `GEMINI_FALLBACK_MODEL` — optional fallback Gemini model ID for temporary rate limits or server overload (defaults to `gemini-3.5-flash-lite`)
-- `OPENAI_API_KEY` — optional fallback model if Gemini is not configured
+- `ANTHROPIC_API_KEY` — Claude API key; `ANTHROPIC_MODEL` selects its model (defaults to `claude-sonnet-5`)
+- `OPENAI_API_KEY` — OpenAI Platform API key; `OPENAI_MODEL` selects its model (defaults to `gpt-6-luna`). Codex does not use a separate general-purpose API key; use an OpenAI Platform key here.
 - `OPENAI_MODEL` — optional OpenAI model ID (defaults to `gpt-6-luna`)
+- `OPENAI_COMPATIBLE_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_MODEL` — credentials, base URL, and model for a service implementing the OpenAI Chat Completions API. `AI_API_KEY` and `AI_MODEL` are accepted as key/model aliases for this provider.
 - `TAVILY_API_KEY` — live web search and excerpts
 - `YOUTUBE_API_KEY` — YouTube Data API search; enable YouTube Data API v3 for the key
 

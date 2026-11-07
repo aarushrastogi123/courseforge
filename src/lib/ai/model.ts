@@ -8,7 +8,12 @@ type GeminiResponse = {
   error?: { message?: string; status?: string };
 };
 
-export type AIProvider = "gemini" | "openai";
+type AnthropicResponse = {
+  content?: Array<{ type?: string; text?: string }>;
+  error?: { message?: string };
+};
+
+export type AIProvider = "gemini" | "anthropic" | "openai" | "openai-compatible";
 
 class AIRequestError extends Error {
   constructor(
@@ -22,11 +27,21 @@ class AIRequestError extends Error {
 }
 
 export function getAIConfiguration() {
-  if (process.env.GEMINI_API_KEY) {
+  const requestedProvider = process.env.AI_PROVIDER?.trim().toLowerCase();
+  const provider = requestedProvider || (process.env.GEMINI_API_KEY ? "gemini" : process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.OPENAI_API_KEY ? "openai" : process.env.OPENAI_COMPATIBLE_API_KEY || process.env.AI_API_KEY ? "openai-compatible" : "");
+  if (provider === "gemini" && process.env.GEMINI_API_KEY) {
     return { provider: "gemini" as const, apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.8-flash" };
   }
-  if (process.env.OPENAI_API_KEY) {
+  if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+    return { provider: "anthropic" as const, apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5" };
+  }
+  if (provider === "openai" && process.env.OPENAI_API_KEY) {
     return { provider: "openai" as const, apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || "gpt-6-luna" };
+  }
+  if (provider === "openai-compatible") {
+    const apiKey = process.env.OPENAI_COMPATIBLE_API_KEY || process.env.AI_API_KEY;
+    const baseUrl = process.env.OPENAI_COMPATIBLE_BASE_URL?.trim().replace(/\/+$/, "");
+    if (apiKey && baseUrl) return { provider: "openai-compatible" as const, apiKey, model: process.env.OPENAI_COMPATIBLE_MODEL || process.env.AI_MODEL || "" , baseUrl };
   }
   return { provider: null, apiKey: undefined, model: undefined };
 }
@@ -93,10 +108,55 @@ async function requestOpenAI(systemPrompt: string, input: unknown, apiKey: strin
   return content;
 }
 
+async function requestAnthropic(systemPrompt: string, input: unknown, apiKey: string, model: string): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({ model, max_tokens: 7000, system: systemPrompt, messages: [{ role: "user", content: JSON.stringify(input) }] }),
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch {
+    throw new Error("Claude could not be reached. Your brief and saved lesson are preserved; retry when the connection is available.");
+  }
+  const payload = await response.json().catch(() => null) as AnthropicResponse | null;
+  if (!response.ok) {
+    const detail = typeof payload?.error?.message === "string" ? payload.error.message : "Claude request failed.";
+    throw new Error("Claude request failed (" + response.status + "): " + detail);
+  }
+  const content = payload?.content?.filter((part) => part.type === "text").map((part) => part.text || "").join("").trim();
+  if (!content) throw new Error("Claude returned no structured lesson data. Your brief is preserved; please retry.");
+  return content;
+}
+
+async function requestOpenAICompatible(systemPrompt: string, input: unknown, apiKey: string, model: string, baseUrl: string): Promise<string> {
+  const endpoint = baseUrl.endsWith("/chat/completions") ? baseUrl : baseUrl + (baseUrl.endsWith("/v1") ? "/chat/completions" : "/v1/chat/completions");
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ model, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(input) }], response_format: { type: "json_object" }, max_tokens: 7000 }),
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch {
+    throw new Error("The configured OpenAI-compatible AI service could not be reached. Your brief and saved lesson are preserved; retry when the connection is available.");
+  }
+  const payload = await response.json().catch(() => null) as OpenAIResponse | null;
+  if (!response.ok) {
+    const detail = typeof payload?.error?.message === "string" ? payload.error.message : "AI request failed.";
+    throw new Error("Configured AI service request failed (" + response.status + "): " + detail);
+  }
+  const content = payload?.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Configured AI service returned no structured lesson data. Your brief is preserved; please retry.");
+  return content;
+}
+
 export async function requestJSONFromModel<T>(systemPrompt: string, input: unknown): Promise<{ value: T; model: string; provider: AIProvider }> {
   const config = getAIConfiguration();
   if (!config.apiKey || !config.provider || !config.model) {
-    throw new Error("Add GEMINI_API_KEY or OPENAI_API_KEY to .env.local to use model-assisted lesson generation and QC.");
+    throw new Error("Configure AI_PROVIDER and the matching provider API key to use model-assisted lesson generation and QC.");
   }
   let model = config.model;
   let content: string;
@@ -122,8 +182,14 @@ export async function requestJSONFromModel<T>(systemPrompt: string, input: unkno
       }
       console.warn("Gemini model " + primaryModel + " was unavailable; completed the request with fallback model " + model + ".");
     }
-  } else {
+  } else if (config.provider === "anthropic") {
+    content = await requestAnthropic(systemPrompt, input, config.apiKey, model);
+  } else if (config.provider === "openai") {
     content = await requestOpenAI(systemPrompt, input, config.apiKey, model);
+  } else {
+    const baseUrl = "baseUrl" in config ? config.baseUrl : undefined;
+    if (!baseUrl || !model) throw new Error("Set OPENAI_COMPATIBLE_BASE_URL and OPENAI_COMPATIBLE_MODEL for the configured compatible AI service.");
+    content = await requestOpenAICompatible(systemPrompt, input, config.apiKey, model, baseUrl);
   }
   try {
     return { value: JSON.parse(content) as T, model, provider: config.provider };

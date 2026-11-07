@@ -36,7 +36,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(1);
   const [promptSectionId, setPromptSectionId] = useState<string | null>(null);
   const [promptInstruction, setPromptInstruction] = useState("");
-  const [researchReadiness, setResearchReadiness] = useState<{ ready: boolean; missing: string[]; aiProvider: "gemini" | "openai" | null } | null>(null);
+  const [researchReadiness, setResearchReadiness] = useState<{ ready: boolean; missing: string[]; aiProvider: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } | null>(null);
 
   useEffect(() => {
     try {
@@ -66,7 +66,7 @@ export default function Home() {
     let cancelled = false;
     fetch("/api/lessons", { cache: "no-store" })
       .then((response) => response.json())
-      .then((payload: { liveResearch?: { ready?: boolean; missing?: string[]; aiProvider?: "gemini" | "openai" | null } }) => {
+      .then((payload: { liveResearch?: { ready?: boolean; missing?: string[]; aiProvider?: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } }) => {
         if (!cancelled && payload.liveResearch) setResearchReadiness({ ready: Boolean(payload.liveResearch.ready), missing: payload.liveResearch.missing ?? [], aiProvider: payload.liveResearch.aiProvider ?? null });
       })
       .catch(() => { if (!cancelled) setResearchReadiness({ ready: false, missing: ["research providers unavailable"], aiProvider: null }); });

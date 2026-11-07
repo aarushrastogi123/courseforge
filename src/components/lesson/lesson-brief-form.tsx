@@ -11,7 +11,7 @@ type LessonBriefFormProps = {
   isBuilding: boolean;
   hasBuildError: boolean;
   unsupportedBrief: boolean;
-  researchReadiness: { ready: boolean; missing: string[]; aiProvider: "gemini" | "openai" | null } | null;
+  researchReadiness: { ready: boolean; missing: string[]; aiProvider: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } | null;
   onChange: (field: keyof LessonBrief, value: string) => void;
   onUseSample: (sample: LessonBrief) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
