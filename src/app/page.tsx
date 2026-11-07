@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useState, type FormEvent } from "react";
+import { startTransition, useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { LessonBriefForm } from "@/components/lesson/lesson-brief-form";
 import { LessonDraftView } from "@/components/lesson/lesson-draft-view";
@@ -40,6 +40,7 @@ export default function Home() {
   const [promptSectionId, setPromptSectionId] = useState<string | null>(null);
   const [promptInstruction, setPromptInstruction] = useState("");
   const [researchReadiness, setResearchReadiness] = useState<{ ready: boolean; missing: string[]; aiProvider: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } | null>(null);
+  const returnToBriefAfterBuild = useRef(false);
 
   useEffect(() => {
     let restoredStep = 1;
@@ -148,6 +149,7 @@ export default function Home() {
     let canRetry = true;
     try { window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(cleanBrief)); } catch { briefSavedLocally = false; }
     setIsBuilding(true);
+    returnToBriefAfterBuild.current = false;
     setCurrentStep(2);
     setNotice("Brief saved. Preparing research and lesson content…");
     try {
@@ -162,7 +164,7 @@ export default function Home() {
       const lesson = payload.lesson;
       setLessonDraft(lesson);
       try { window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(lesson)); } catch { setNotice("Draft ready, but browser storage is unavailable. Keep this tab open to retain it."); }
-      setCurrentStep(3);
+      if (!returnToBriefAfterBuild.current) setCurrentStep(3);
       setNotice(briefSavedLocally ? "Lesson draft saved in this browser." : "Draft ready. Browser storage is unavailable, so it will not persist after this tab closes.");
     } catch (error) {
       setHasBuildError(canRetry);
@@ -221,10 +223,10 @@ export default function Home() {
     <div className="studio-shell minecraft-shell">
       <a className="skip-link" href="#main-content">Skip to current step</a>
       <header className="topbar">
-        <div className="brand" aria-label="CourseForge">
+        <button className="brand" type="button" aria-label="CourseForge — return to lesson brief" title="Return to lesson brief" onClick={() => { if (isBuilding) returnToBriefAfterBuild.current = true; setCurrentStep(1); }}>
           <Image className="brand-logo" src="/courseforge-mark.svg" alt="" width={192} height={160} priority />
           <span className="brand-name">CourseForge</span>
-        </div>
+        </button>
         <div className="workspace-status"><span className="status-dot" aria-hidden="true" />Local workspace</div>
       </header>
 
@@ -238,7 +240,7 @@ export default function Home() {
       <main className="content-wrap" id="main-content" tabIndex={-1}>
         <div className="step-overline"><span className="pixel-cube" aria-hidden="true" />COURSEFORGE WORKSPACE</div>
         {currentStep === 1 && <>
-          <div className="page-intro"><p className="eyebrow">LESSON BRIEF</p><h1>Plan a focused 45-minute lesson.</h1><p className="intro-copy">Start with the outcome learners should reach. CourseForge will research, draft, and prepare two separate quality reviews.</p></div>
+          <div className="page-intro"><p className="eyebrow">LESSON BRIEF</p><h1 className="brief-page-title"><span>Plan a focused</span> <span>45-minute lesson.</span></h1><p className="intro-copy">Start with the outcome learners should reach. CourseForge will research, draft, and prepare two separate quality reviews.</p></div>
           <div className="workspace-grid brief-workspace">
             <LessonBriefForm brief={brief} errors={errors} notice={notice} isBuilding={isBuilding} hasBuildError={hasBuildError} unsupportedBrief={isUnsupportedBrief} researchReadiness={researchReadiness} onChange={updateBrief} onUseSample={useSampleBrief} onSubmit={saveBrief} />
             <aside className="workflow-aside" aria-label="Workflow details"><p className="eyebrow">WORKFLOW</p><h2>From brief to reviewed lesson.</h2><ol><li><span>01</span>Enter a title and measurable objective.</li><li><span>02</span>Research relevant books, websites, and videos.</li><li><span>03</span>Review content and run both QC layers.</li><li><span>04</span>Download Word documents when both reviews are complete.</li></ol><p className="aside-note">Saved drafts and your edits stay in this browser.</p></aside>

@@ -1,0 +1,9 @@
+{
+  "framework": "next",
+  "style": "default",
+  "css": "src/app/globals.css",
+  "aliases": {
+    "components": "@/components/ui",
+    "utils": "@/lib/utils"
+  }
+}
