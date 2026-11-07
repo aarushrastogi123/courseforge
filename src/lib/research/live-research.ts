@@ -70,7 +70,7 @@ async function searchBooks(query: string): Promise<LessonSource[]> {
   let response: Response;
   try {
     response = await fetch("https://openlibrary.org/search.json?" + params, {
-      headers: { "User-Agent": "KalviumLessonStudio/0.1" + (process.env.OPEN_LIBRARY_CONTACT ? " (" + process.env.OPEN_LIBRARY_CONTACT + ")" : "") },
+      headers: { "User-Agent": "CourseForge/0.1" + (process.env.OPEN_LIBRARY_CONTACT ? " (" + process.env.OPEN_LIBRARY_CONTACT + ")" : "") },
       signal: AbortSignal.timeout(20_000),
     });
   } catch {
