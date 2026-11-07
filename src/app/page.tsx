@@ -40,7 +40,7 @@ export default function Home() {
   const [promptSectionId, setPromptSectionId] = useState<string | null>(null);
   const [promptInstruction, setPromptInstruction] = useState("");
   const [researchReadiness, setResearchReadiness] = useState<{ ready: boolean; missing: string[]; aiProvider: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } | null>(null);
-  const returnToBriefAfterBuild = useRef(false);
+  const clearSessionBeforeReload = useRef(false);
 
   useEffect(() => {
     let restoredStep = 1;
@@ -99,6 +99,21 @@ export default function Home() {
   }, [currentStep, downloadedFiles, sessionRestored]);
 
   useEffect(() => {
+    if (!sessionRestored) return;
+    function saveBeforeReload() {
+      if (clearSessionBeforeReload.current) return;
+      try {
+        window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(brief));
+        if (lessonDraft) window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(lessonDraft));
+        window.localStorage.setItem(WORKFLOW_STEP_STORAGE_KEY, String(currentStep));
+        window.localStorage.setItem(DOWNLOADED_FILES_STORAGE_KEY, JSON.stringify(downloadedFiles));
+      } catch { /* Existing saved data remains available if the browser storage limit is reached. */ }
+    }
+    window.addEventListener("beforeunload", saveBeforeReload);
+    return () => window.removeEventListener("beforeunload", saveBeforeReload);
+  }, [brief, lessonDraft, currentStep, downloadedFiles, sessionRestored]);
+
+  useEffect(() => {
     let cancelled = false;
     fetch("/api/lessons", { cache: "no-store" })
       .then((response) => response.json())
@@ -149,7 +164,6 @@ export default function Home() {
     let canRetry = true;
     try { window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(cleanBrief)); } catch { briefSavedLocally = false; }
     setIsBuilding(true);
-    returnToBriefAfterBuild.current = false;
     setCurrentStep(2);
     setNotice("Brief saved. Preparing research and lesson content…");
     try {
@@ -164,7 +178,7 @@ export default function Home() {
       const lesson = payload.lesson;
       setLessonDraft(lesson);
       try { window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(lesson)); } catch { setNotice("Draft ready, but browser storage is unavailable. Keep this tab open to retain it."); }
-      if (!returnToBriefAfterBuild.current) setCurrentStep(3);
+      setCurrentStep(3);
       setNotice(briefSavedLocally ? "Lesson draft saved in this browser." : "Draft ready. Browser storage is unavailable, so it will not persist after this tab closes.");
     } catch (error) {
       setHasBuildError(canRetry);
@@ -212,6 +226,12 @@ export default function Home() {
     setCurrentStep(1);
   }
 
+  function restartWorkspace() {
+    clearSessionBeforeReload.current = true;
+    startNewLesson();
+    window.location.reload();
+  }
+
   function renderLesson(view: "draft" | "quality" | "export") {
     if (!lessonDraft || !isCurrentDraft) return null;
     return <LessonDraftView lesson={lessonDraft} view={view} isCurrent={isCurrentDraft} onLessonUpdate={updateLesson} onReturnToQuality={() => setCurrentStep(4)} onDownloadsComplete={finishDownloads}
@@ -223,7 +243,7 @@ export default function Home() {
     <div className="studio-shell minecraft-shell">
       <a className="skip-link" href="#main-content">Skip to current step</a>
       <header className="topbar">
-        <button className="brand" type="button" aria-label="CourseForge — return to lesson brief" title="Return to lesson brief" onClick={() => { if (isBuilding) returnToBriefAfterBuild.current = true; setCurrentStep(1); }}>
+        <button className="brand" type="button" aria-label="Start a new lesson and return to the beginning" title="Start a new lesson" onClick={restartWorkspace}>
           <Image className="brand-logo" src="/courseforge-mark.svg" alt="" width={192} height={160} priority />
           <span className="brand-name">CourseForge</span>
         </button>
