@@ -1,4 +1,4 @@
-# Kalvium Lesson Studio — Design System
+# CourseForge — Design System
 
 **Audience:** instructors creating and reviewing learning material.
 
