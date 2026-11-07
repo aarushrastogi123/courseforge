@@ -1,7 +1,6 @@
 "use client";
 
 import { startTransition, useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { LessonBriefForm } from "@/components/lesson/lesson-brief-form";
 import { LessonDraftView } from "@/components/lesson/lesson-draft-view";
@@ -10,6 +9,8 @@ import type { LessonBrief, LessonDraft } from "@/lib/lesson/types";
 
 const BRIEF_STORAGE_KEY = "courseforge.brief.v1";
 const LESSON_STORAGE_KEY = "courseforge.lesson.v1";
+const WORKFLOW_STEP_STORAGE_KEY = "courseforge.workflow-step.v1";
+const DOWNLOADED_FILES_STORAGE_KEY = "courseforge.downloaded-files.v1";
 const LEGACY_BRIEF_STORAGE_KEY = "kalvium-lesson-studio.brief.v1";
 const LEGACY_LESSON_STORAGE_KEY = "kalvium-lesson-studio.lesson.v1";
 const workflow = ["Lesson brief", "Research", "Lesson draft", "Quality checks", "Export"] as const;
@@ -34,33 +35,67 @@ export default function Home() {
   const [hasBuildError, setHasBuildError] = useState(false);
   const [isUnsupportedBrief, setIsUnsupportedBrief] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const [downloadedFiles, setDownloadedFiles] = useState<Array<"lesson" | "reports">>([]);
   const [promptSectionId, setPromptSectionId] = useState<string | null>(null);
   const [promptInstruction, setPromptInstruction] = useState("");
   const [researchReadiness, setResearchReadiness] = useState<{ ready: boolean; missing: string[]; aiProvider: "gemini" | "anthropic" | "openai" | "openai-compatible" | null } | null>(null);
 
   useEffect(() => {
+    let restoredStep = 1;
+    let hadSavedStep = false;
+    let hasBrief = false;
+    let hasDraft = false;
+    let restoredBrief: LessonBrief | null = null;
+    let draftMatchesBrief = false;
     try {
+      const savedStep = Number(window.localStorage.getItem(WORKFLOW_STEP_STORAGE_KEY));
+      if (Number.isInteger(savedStep) && savedStep >= 1 && savedStep <= 6) { restoredStep = savedStep; hadSavedStep = true; }
       const savedBrief = window.localStorage.getItem(BRIEF_STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_BRIEF_STORAGE_KEY);
       if (savedBrief) {
         const parsed = JSON.parse(savedBrief) as Partial<LessonBrief>;
         if (typeof parsed.title === "string" && typeof parsed.learningObjective === "string") {
-          const restoredBrief = { title: parsed.title, learningObjective: parsed.learningObjective };
-          startTransition(() => { setBrief(restoredBrief); setNotice("Your saved lesson brief is ready to continue."); });
-          window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(restoredBrief));
+          const loadedBrief = { title: parsed.title, learningObjective: parsed.learningObjective };
+          restoredBrief = loadedBrief;
+          hasBrief = true;
+          startTransition(() => { setBrief(loadedBrief); setNotice("Your saved lesson brief is ready to continue."); });
+          window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(loadedBrief));
         }
       }
       const savedLesson = window.localStorage.getItem(LESSON_STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_LESSON_STORAGE_KEY);
       if (savedLesson) {
         const parsed: unknown = JSON.parse(savedLesson);
         if (isLessonDraft(parsed)) {
-          startTransition(() => { setLessonDraft(parsed); setCurrentStep(3); });
+          hasDraft = true;
+          draftMatchesBrief = !restoredBrief || (parsed.brief.title.trim() === restoredBrief.title.trim() && parsed.brief.learningObjective.trim() === restoredBrief.learningObjective.trim());
+          if (!hasBrief) restoredBrief = parsed.brief;
+          startTransition(() => setLessonDraft(parsed));
           window.localStorage.setItem(LESSON_STORAGE_KEY, JSON.stringify(parsed));
         }
       }
+      const savedDownloads = JSON.parse(window.localStorage.getItem(DOWNLOADED_FILES_STORAGE_KEY) ?? "[]") as unknown;
+      if (Array.isArray(savedDownloads)) startTransition(() => setDownloadedFiles(savedDownloads.filter((file): file is "lesson" | "reports" => file === "lesson" || file === "reports")));
     } catch {
       startTransition(() => setNotice("A saved item could not be read. Your current entries are still available."));
+    } finally {
+      if (hasDraft && draftMatchesBrief && !hadSavedStep) restoredStep = 3;
+      if (!hasDraft && restoredStep >= 3) restoredStep = 1;
+      if (restoredStep === 2 && hasBrief) {
+        setHasBuildError(true);
+        setNotice("Your previous research was interrupted. Retry to continue this lesson.");
+      }
+      setCurrentStep(restoredStep);
+      setSessionRestored(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!sessionRestored) return;
+    try {
+      window.localStorage.setItem(WORKFLOW_STEP_STORAGE_KEY, String(currentStep));
+      window.localStorage.setItem(DOWNLOADED_FILES_STORAGE_KEY, JSON.stringify(downloadedFiles));
+    } catch { /* The active workflow remains available for this tab if storage is unavailable. */ }
+  }, [currentStep, downloadedFiles, sessionRestored]);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +112,9 @@ export default function Home() {
   const qualityReviewsComplete = Boolean(isCurrentDraft && lessonDraft?.qualityReports["factual-accuracy"].status === "complete" && lessonDraft?.qualityReports["instructional-quality"].status === "complete");
 
   function updateBrief(field: keyof LessonBrief, value: string) {
-    setBrief((current) => ({ ...current, [field]: value }));
+    const updated = { ...brief, [field]: value };
+    setBrief(updated);
+    try { window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(updated)); } catch { /* Keep the active form usable if browser storage is unavailable. */ }
     setErrors((current) => ({ ...current, [field]: undefined }));
     setIsUnsupportedBrief(false);
     setHasBuildError(false);
@@ -87,6 +124,7 @@ export default function Home() {
 
   function useSampleBrief(sample: LessonBrief = SAMPLE_LESSON_BRIEF) {
     setBrief(sample);
+    try { window.localStorage.setItem(BRIEF_STORAGE_KEY, JSON.stringify(sample)); } catch { /* The sample remains available in the current tab. */ }
     setErrors({});
     setHasBuildError(false);
     setIsUnsupportedBrief(false);
@@ -148,9 +186,33 @@ export default function Home() {
     setCurrentStep(3);
   }
 
+  function finishDownloads(files: Array<"lesson" | "reports">) {
+    setDownloadedFiles(files);
+    setCurrentStep(6);
+  }
+
+  function startNewLesson() {
+    try {
+      window.localStorage.removeItem(BRIEF_STORAGE_KEY);
+      window.localStorage.removeItem(LESSON_STORAGE_KEY);
+      window.localStorage.removeItem(WORKFLOW_STEP_STORAGE_KEY);
+      window.localStorage.removeItem(DOWNLOADED_FILES_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_BRIEF_STORAGE_KEY);
+      window.localStorage.removeItem(LEGACY_LESSON_STORAGE_KEY);
+    } catch { /* Reset the in-memory workspace even if browser storage is unavailable. */ }
+    setBrief({ title: "", learningObjective: "" });
+    setLessonDraft(null);
+    setErrors({});
+    setNotice("");
+    setHasBuildError(false);
+    setIsUnsupportedBrief(false);
+    setDownloadedFiles([]);
+    setCurrentStep(1);
+  }
+
   function renderLesson(view: "draft" | "quality" | "export") {
     if (!lessonDraft || !isCurrentDraft) return null;
-    return <LessonDraftView lesson={lessonDraft} view={view} isCurrent={isCurrentDraft} onLessonUpdate={updateLesson} onReturnToQuality={() => setCurrentStep(4)}
+    return <LessonDraftView lesson={lessonDraft} view={view} isCurrent={isCurrentDraft} onLessonUpdate={updateLesson} onReturnToQuality={() => setCurrentStep(4)} onDownloadsComplete={finishDownloads}
       promptSectionId={promptSectionId} initialPrompt={promptInstruction} onPromptClosed={() => { setPromptSectionId(null); setPromptInstruction(""); }}
       onOpenSectionPrompt={openSectionPrompt} />;
   }
@@ -159,15 +221,16 @@ export default function Home() {
     <div className="studio-shell minecraft-shell">
       <a className="skip-link" href="#main-content">Skip to current step</a>
       <header className="topbar">
-        <Link className="brand" href="/" aria-label="CourseForge home" onClick={(event) => { event.preventDefault(); setCurrentStep(1); }}>
-          <Image className="brand-logo" src="/courseforge-logo.png" alt="CourseForge" width={472} height={472} priority />
-        </Link>
+        <div className="brand" aria-label="CourseForge">
+          <Image className="brand-logo" src="/courseforge-mark.svg" alt="" width={192} height={160} priority />
+          <span className="brand-name">CourseForge</span>
+        </div>
         <div className="workspace-status"><span className="status-dot" aria-hidden="true" />Local workspace</div>
       </header>
 
       <div className="workflow-progress" role="group" aria-label="Workflow progress">
-        <div className="workflow-progress-label"><span>STEP {String(currentStep).padStart(2, "0")} OF 05</span><strong>{currentStep === 2 && isBuilding ? "Research in progress" : workflow[currentStep - 1]}</strong></div>
-        <div className="workflow-progress-track" role="progressbar" aria-label={`Step ${currentStep} of 5: ${workflow[currentStep - 1]}`} aria-valuemin={1} aria-valuemax={5} aria-valuenow={currentStep}>
+        <div className="workflow-progress-label"><span>{currentStep === 6 ? "SESSION COMPLETE" : `STEP ${String(currentStep).padStart(2, "0")} OF 05`}</span><strong>{currentStep === 6 ? "Downloads complete" : currentStep === 2 && isBuilding ? "Research in progress" : workflow[currentStep - 1]}</strong></div>
+        <div className="workflow-progress-track" role="progressbar" aria-label={currentStep === 6 ? "Lesson workflow complete" : `Step ${currentStep} of 5: ${workflow[currentStep - 1]}`} aria-valuemin={1} aria-valuemax={5} aria-valuenow={Math.min(currentStep, 5)}>
           {workflow.map((label, index) => <span key={label} className={`workflow-progress-segment ${index + 1 <= currentStep ? "is-filled" : ""}`} aria-hidden="true" />)}
         </div>
       </div>
@@ -207,8 +270,16 @@ export default function Home() {
         {currentStep === 5 && <>
           <div className="page-intro"><p className="eyebrow">FINAL REVIEW &amp; EXPORT</p><h1>Finalize the lesson package.</h1><p className="intro-copy">Preview the lesson and its completed audit reports. Download the lesson and the full QC record as separate Word documents.</p></div>
           {isCurrentDraft && qualityReviewsComplete ? renderLesson("export") : <div className="empty-state"><h2>Complete both QC layers to prepare the documents.</h2><button className="button button-primary" type="button" onClick={() => setCurrentStep(isCurrentDraft ? 4 : 1)}>{isCurrentDraft ? "Return to quality checks" : "Return to lesson brief"}</button></div>}
-          {isCurrentDraft && <div className="step-actions"><button className="button button-secondary" type="button" onClick={() => setCurrentStep(4)}>Back to quality checks</button></div>}
         </>}
+
+        {currentStep === 6 && <section className="completion-screen" aria-labelledby="completion-heading" aria-live="polite">
+          <span className="completion-cube" aria-hidden="true">✓</span>
+          <p className="eyebrow">FILES READY</p>
+          <h1 id="completion-heading">Your downloads are complete.</h1>
+          <p className="intro-copy">Thank you for choosing CourseForge. Your selected document{downloadedFiles.length === 1 ? " is" : "s are"} ready in your browser downloads.</p>
+          <ul className="completion-files">{downloadedFiles.map((file) => <li key={file}>{file === "lesson" ? "Final lesson document" : "Quality reports document"}</li>)}</ul>
+          <button className="button button-primary" type="button" onClick={startNewLesson}>Start a new lesson <span aria-hidden="true">→</span></button>
+        </section>}
       </main>
     </div>
   );

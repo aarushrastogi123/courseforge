@@ -10,6 +10,7 @@ type Props = {
   isCurrent: boolean;
   onLessonUpdate: (lesson: LessonDraft) => void;
   onReturnToQuality: () => void;
+  onDownloadsComplete: (files: Array<"lesson" | "reports">) => void;
   promptSectionId: string | null;
   initialPrompt: string;
   onPromptClosed: () => void;
@@ -27,7 +28,7 @@ function pendingReports(reports: LessonDraft["qualityReports"]): LessonDraft["qu
   return { "factual-accuracy": reset(reports["factual-accuracy"]), "instructional-quality": reset(reports["instructional-quality"]) };
 }
 
-export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onReturnToQuality, promptSectionId, initialPrompt, onPromptClosed, onOpenSectionPrompt }: Props) {
+export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onReturnToQuality, onDownloadsComplete, promptSectionId, initialPrompt, onPromptClosed, onOpenSectionPrompt }: Props) {
   const [workingCopy, setWorkingCopy] = useState<LessonDraft | null>(null);
   const [openPromptId, setOpenPromptId] = useState<string | null>(promptSectionId);
   const [instruction, setInstruction] = useState(initialPrompt);
@@ -36,6 +37,8 @@ export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onRet
   const [generationError, setGenerationError] = useState("");
   const [exporting, setExporting] = useState<"lesson" | "reports" | null>(null);
   const [exportError, setExportError] = useState("");
+  const [retryKind, setRetryKind] = useState<"lesson" | "reports">("lesson");
+  const [downloadPrompt, setDownloadPrompt] = useState<{ downloaded: "lesson" | "reports"; other: "lesson" | "reports" } | null>(null);
   const isEditing = workingCopy !== null;
   const displayedLesson = workingCopy ?? lesson;
   const duration = lesson.sections.reduce((total, section) => total + section.durationMinutes, 0);
@@ -95,8 +98,9 @@ export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onRet
     if (sectionId) onOpenSectionPrompt(sectionId, finding.recommendation);
   }
 
-  async function downloadDocument(kind: "lesson" | "reports") {
+  async function downloadDocument(kind: "lesson" | "reports"): Promise<boolean> {
     setExporting(kind);
+    setRetryKind(kind);
     setExportError("");
     try {
       const response = await fetch("/api/lessons/export", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lesson, kind }) });
@@ -112,8 +116,26 @@ export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onRet
       link.href = url;
       link.download = `${safeTitle}-${kind === "lesson" ? "lesson" : "quality-reports"}.docx`;
       document.body.append(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) { setExportError(error instanceof Error ? error.message : "The Word document could not be prepared. Please retry."); }
+      setExportError("");
+      return true;
+    } catch (error) { setExportError(error instanceof Error ? error.message : "The Word document could not be prepared. Please retry."); return false; }
     finally { setExporting(null); }
+  }
+
+  async function beginDownload(kind: "lesson" | "reports") {
+    if (!await downloadDocument(kind)) return;
+    setDownloadPrompt({ downloaded: kind, other: kind === "lesson" ? "reports" : "lesson" });
+  }
+
+  async function finishDownloadChoice(includeOther: boolean) {
+    if (!downloadPrompt) return;
+    const files: Array<"lesson" | "reports"> = [downloadPrompt.downloaded];
+    if (includeOther) {
+      if (!await downloadDocument(downloadPrompt.other)) { setDownloadPrompt(null); return; }
+      files.push(downloadPrompt.other);
+    }
+    setDownloadPrompt(null);
+    onDownloadsComplete(files);
   }
 
   if (view === "quality") {
@@ -151,8 +173,9 @@ export function LessonDraftView({ lesson, view, isCurrent, onLessonUpdate, onRet
     {showLessonContent && <div className="source-library"><div className="source-library-heading"><div><p className="eyebrow">REFERENCE LIBRARY</p><h3>Sources used for this outline</h3></div><span>{lesson.sources.length} references</span></div><ul className="source-list">{displayedLesson.sources.map((source) => <li className="source-item" key={source.id}><span className="source-kind">{sourceKindLabel(source.kind)}</span><span className="source-copy"><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a><small>{source.publisher} · {source.relevanceNote}{source.accessedAt ? " Retrieved " + new Date(source.accessedAt).toLocaleDateString() + "." : ""}</small>{source.evidenceExcerpt && <details className="source-excerpt"><summary>{source.kind === "youtube" ? "Video description" : "Retrieved excerpt"}</summary><p>{source.evidenceExcerpt}</p></details>}</span><span className="source-arrow" aria-hidden="true">↗</span></li>)}</ul></div>}
 
     {view === "export" && <section className="final-audit-preview" aria-labelledby="final-audit-heading"><div><p className="eyebrow">FINAL QUALITY RECORD</p><h3 id="final-audit-heading">Two completed audit reports</h3></div><div className="final-audit-grid">{(["factual-accuracy", "instructional-quality"] as const).map((layer) => {const report = lesson.qualityReports[layer]; return <article key={layer}><span className="quality-status is-complete">{report.reviewMethod === "ai-assisted" ? "Model-assisted" : "Heuristic review"}</span><h4>{layer === "factual-accuracy" ? "Research & factual accuracy" : "Instructional quality"}</h4><p>{report.summary}</p><span>{report.findings.length} finding{report.findings.length === 1 ? "" : "s"} · {report.status === "complete" ? "Complete" : "Pending"}</span></article>;})}</div>
-      <div className="document-downloads"><div><p className="eyebrow">WORD DOCUMENTS</p><h3>Export the finalized package.</h3><p>Each file uses the CourseForge instructor template and includes the lesson context.</p></div><div className="document-download-grid"><article><span className="document-mark" aria-hidden="true">DOC</span><div><strong>Final lesson</strong><p>Lesson flow, timing, activities, knowledge checks, and full references.</p></div><button className="button button-primary" type="button" disabled={Boolean(exporting) || !isCurrent} onClick={() => void downloadDocument("lesson")}>{exporting === "lesson" ? "Preparing…" : "Download lesson.docx"}</button></article><article><span className="document-mark report-mark" aria-hidden="true">QC</span><div><strong>Quality reports</strong><p>Both complete audit reports, findings, recommendations, and reference register.</p></div><button className="button button-secondary" type="button" disabled={Boolean(exporting) || !isCurrent} onClick={() => void downloadDocument("reports")}>{exporting === "reports" ? "Preparing…" : "Download reports.docx"}</button></article></div>
-      {exportError && <div className="quality-error" role="alert"><p>{exportError}</p><button className="button button-secondary" type="button" disabled={Boolean(exporting)} onClick={() => void downloadDocument(exporting ?? "lesson")}>Retry document download</button></div>}
+      <div className="document-downloads"><div><p className="eyebrow">WORD DOCUMENTS</p><h3>Export the finalized package.</h3><p>Each file uses the CourseForge instructor template and includes the lesson context.</p></div><div className="document-download-grid"><article><span className="document-mark" aria-hidden="true">DOC</span><div><strong>Final lesson</strong><p>Lesson flow, timing, activities, knowledge checks, and full references.</p></div><button className="button button-primary" type="button" disabled={Boolean(exporting) || !isCurrent} onClick={() => void beginDownload("lesson")}>{exporting === "lesson" ? "Preparing…" : "Download lesson.docx"}</button></article><article><span className="document-mark report-mark" aria-hidden="true">QC</span><div><strong>Quality reports</strong><p>Both complete audit reports, findings, recommendations, and reference register.</p></div><button className="button button-secondary" type="button" disabled={Boolean(exporting) || !isCurrent} onClick={() => void beginDownload("reports")}>{exporting === "reports" ? "Preparing…" : "Download reports.docx"}</button></article></div>
+      {exportError && <div className="quality-error" role="alert"><p>{exportError}</p><button className="button button-secondary" type="button" disabled={Boolean(exporting)} onClick={() => void beginDownload(retryKind)}>Retry {retryKind === "lesson" ? "lesson" : "quality reports"} download</button></div>}
     </div></section>}
+    {view === "export" && downloadPrompt && <div className="download-confirm-backdrop"><section className="download-confirm" role="dialog" aria-modal="true" aria-labelledby="download-confirm-heading" aria-describedby="download-confirm-copy" onKeyDown={(event) => { if (event.key === "Escape" && !exporting) void finishDownloadChoice(false); }}><p className="eyebrow">DOWNLOAD READY</p><h2 id="download-confirm-heading">Would you like the other file too?</h2><p id="download-confirm-copy">Your {downloadPrompt.downloaded === "lesson" ? "lesson" : "quality reports"} document has been downloaded. Download the {downloadPrompt.other === "lesson" ? "lesson" : "quality reports"} document as well?</p><div className="download-confirm-actions"><button className="button button-secondary" type="button" disabled={Boolean(exporting)} onClick={() => void finishDownloadChoice(false)}>No thanks</button><button className="button button-primary" type="button" autoFocus disabled={Boolean(exporting)} onClick={() => void finishDownloadChoice(true)}>{exporting ? "Preparing…" : `Download ${downloadPrompt.other === "lesson" ? "lesson" : "reports"} too`}</button></div></section></div>}
   </section>;
 }

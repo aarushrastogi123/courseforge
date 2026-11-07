@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   description: "Research, draft, quality-check, and export focused 45-minute lessons.",
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png", sizes: "472x472" }],
+    icon: [{ url: "/courseforge-mark.svg", type: "image/svg+xml" }],
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "472x472" }],
   },
   openGraph: {

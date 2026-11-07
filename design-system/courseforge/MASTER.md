@@ -2,7 +2,7 @@
 
 **Audience:** instructors creating and reviewing learning material.
 
-**Design read:** an instructor-facing research workspace with a calm, editorial feel and clear source and review status.
+**Design read:** an instructor-facing, Minecraft-inspired lesson workspace with a dark green canvas, contrasting warm work surfaces, and clear source and review status.
 
 **Design dials:** variance 4/10, motion 2/10, density 5/10.
 
@@ -18,18 +18,11 @@
 
 | Role | Value | CSS variable |
 | --- | --- | --- |
-| Ink | `#193B37` | `--color-ink` |
-| Secondary ink | `#42615B` | `--color-ink-soft` |
-| Muted text | `#65746F` | `--color-muted` |
-| Primary action | `#235E52` | `--color-primary` |
-| Primary hover | `#18483F` | `--color-primary-hover` |
-| Primary tint | `#E8F1EC` | `--color-primary-soft` |
-| Page background | `#F5F6F3` | `--color-paper` |
-| Surface | `#FFFFFF` | `--color-surface` |
-| Surface tint | `#F1F5F1` | `--color-surface-tint` |
-| Border | `#DCE4DE` | `--color-border` |
-| Strong border | `#C5D2CA` | `--color-border-strong` |
-| Error | `#A63A34` | `--color-error` |
+| Dark green canvas and text | `#09251C` | `--color-paper`, `--color-ink`, `--color-primary` |
+| Brown primary action | `#A55704` | `--color-action`, `--color-accent` |
+| Peach work surface, focus fill, and borders | `#F3D2AF` | `--color-surface`, `--color-surface-tint`, `--color-border`, `--color-action-hover` |
+| Cream text and inset surfaces | `#F8EADC` | body text and input surfaces |
+| Strong border | `#A55704` | `--color-border-strong` |
 
 ## Typography and spacing
 
